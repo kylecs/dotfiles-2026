@@ -1,0 +1,14 @@
+# Allowlist: ~/.config holds credentials and app state, so nothing is
+# tracked unless it's named here.
+/*
+!/.gitignore
+!/README.md
+
+!/nvim/
+
+!/kitty/
+/kitty/*
+!/kitty/kitty.conf
+!/kitty/gruvbox-dark.conf
+
+.DS_Store
