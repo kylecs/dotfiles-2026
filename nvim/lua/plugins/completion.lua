@@ -19,6 +19,17 @@ return {
       ["<C-u>"] = { "scroll_documentation_up", "fallback" },
       ["<C-d>"] = { "scroll_documentation_down", "fallback" },
     },
+    -- command line / search: C-j/C-k and the arrows move through the menu
+    -- (C-j has no fallback: in the command line it would run the command)
+    cmdline = {
+      keymap = {
+        preset = "cmdline",
+        ["<C-j>"] = { "select_next" },
+        ["<C-k>"] = { "select_prev" },
+        ["<Down>"] = { "select_next", "fallback" },
+        ["<Up>"] = { "select_prev", "fallback" },
+      },
+    },
     completion = {
       list = { selection = { preselect = true, auto_insert = false } },
       documentation = { auto_show = true, auto_show_delay_ms = 200 },

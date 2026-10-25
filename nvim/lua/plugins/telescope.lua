@@ -31,5 +31,37 @@ return {
       },
     })
     telescope.load_extension("fzf")
+
+    -- buffer pickers show terminals by their tab/statusline name, not term://...
+    local make_entry = require("telescope.make_entry")
+    local gen_from_buffer = make_entry.gen_from_buffer
+    make_entry.gen_from_buffer = function(opts)
+      local make = gen_from_buffer(opts)
+      return function(item)
+        local entry = make(item)
+        if entry and vim.bo[item.bufnr].buftype == "terminal" then
+          local name = require("kyle.util").bufname(item.bufnr)
+          entry.value, entry.filename = name, name
+          entry.ordinal = item.bufnr .. " : " .. name
+          local icon, icon_hl = require("telescope.utils").get_devicons(name, opts.disable_devicons)
+          local bufnr = ("%" .. opts.bufnr_width .. "d"):format(item.bufnr)
+          local text = ("%s %s %s %s"):format(bufnr, entry.indicator, icon, name)
+          -- same highlights as the stock buffer entries
+          local ind = #bufnr + 1
+          local hls = {
+            { { 0, #bufnr }, "TelescopeResultsNumber" },
+            { { ind, ind + #entry.indicator }, "TelescopeResultsComment" },
+          }
+          if icon_hl then
+            local ic = ind + #entry.indicator + 1
+            hls[#hls + 1] = { { ic, ic + #icon }, icon_hl }
+          end
+          entry.display = function()
+            return text, hls
+          end
+        end
+        return entry
+      end
+    end
   end,
 }

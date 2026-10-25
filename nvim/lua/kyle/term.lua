@@ -1,11 +1,11 @@
 -- Terminals hosted by Neovim, with the same key routing as evil-ghostel:
---   * terminals open in terminal (insert) mode, so every key goes to the program
---   * <Esc> drops to normal mode for motions / yank / search over the scrollback
+--   * terminals always land in normal mode (so H/L etc. keep working); press
+--     i/a to type into the program
+--   * <Esc> drops back to normal mode for motions / yank / search over the scrollback
 --   * in normal mode, <Esc> <C-c> <Up> <Down> are forwarded to the program
 --   * <C-Esc> always sends a literal escape (for vim, fzf, claude... inside)
 --   * <C-h/j/k/l> always move between windows (see config/keymaps.lua)
 --   * <C-Space> opens the leader menu straight from terminal mode
---   * coming back to a terminal restores the mode you left it in
 local util = require("kyle.util")
 
 local M = {}
@@ -57,13 +57,10 @@ function M.name(buf)
   return ("[%s] %s"):format(b.kyle_term_id or "term", title)
 end
 
---- Show BUF in WIN and focus it, restoring its last mode.
+--- Show BUF in WIN and focus it.
 function M.focus(win, buf)
   vim.api.nvim_win_set_buf(win, buf)
   vim.api.nvim_set_current_win(win)
-  if vim.b[buf].kyle_term_insert ~= false then
-    vim.cmd.startinsert()
-  end
 end
 
 --- Create a terminal. opts: win, cwd, root, cmd (string), name,
@@ -98,7 +95,8 @@ function M.create(opts)
       end)
     end or nil,
   })
-  vim.cmd.startinsert()
+  -- park the cursor on the last line so the window follows output
+  vim.cmd.normal({ "G", bang = true })
   return buf
 end
 
@@ -228,7 +226,6 @@ function M.setup()
         vim.b[buf].kyle_term_cwd = vim.fn.getcwd()
         vim.b[buf].kyle_term_root = vim.fn.getcwd()
       end
-      vim.b[buf].kyle_term_insert = true
       vim.opt_local.number = false
       vim.opt_local.relativenumber = false
       vim.opt_local.signcolumn = "no"
@@ -249,31 +246,14 @@ function M.setup()
     end,
   })
 
-  -- remember which mode each terminal was left in
-  vim.api.nvim_create_autocmd("TermEnter", {
-    group = group,
-    callback = function()
-      vim.b.kyle_term_insert = true
-    end,
-  })
-  vim.api.nvim_create_autocmd("ModeChanged", {
-    group = group,
-    pattern = "t:nt",
-    callback = function()
-      if vim.b.kyle_term_keep then
-        vim.b.kyle_term_keep = nil
-      else
-        vim.b.kyle_term_insert = false
-      end
-    end,
-  })
   vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
     group = group,
     callback = function(ev)
       if is_term(ev.buf) then
         last = ev.buf
-        if vim.b[ev.buf].kyle_term_insert ~= false and vim.fn.mode() ~= "t" then
-          vim.cmd.startinsert()
+        -- never carry terminal mode into a terminal you navigate to
+        if vim.fn.mode() == "t" then
+          vim.cmd.stopinsert()
         end
       end
     end,
@@ -314,7 +294,6 @@ function M.setup()
   -- leader menu straight from terminal mode (and normal mode, for muscle memory)
   vim.keymap.set({ "n", "t" }, "<C-Space>", function()
     if vim.fn.mode() == "t" then
-      vim.b.kyle_term_keep = true
       vim.cmd.stopinsert()
     end
     vim.schedule(function()
